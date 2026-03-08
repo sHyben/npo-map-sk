@@ -1,0 +1,34 @@
+
+# Local Nominatim geocoder seeded with Slovakia OSM data.
+# Usage:
+#   First run (downloads & indexes Slovakia PBF ~316 MB, takes ~10-20 min):
+#     docker compose -f docker-compose.geocoder.yml up -d
+#
+#   Subsequent runs (index already built, starts in seconds):
+#     docker compose -f docker-compose.geocoder.yml up -d
+#
+#   Stop:
+#     docker compose -f docker-compose.geocoder.yml down
+#
+#   API will be available at http://localhost:8088
+
+services:
+  nominatim:
+    image: mediagis/nominatim:4.4
+    container_name: nominatim-sk
+    restart: unless-stopped
+    ports:
+      - "8088:8080"
+    environment:
+      PBF_URL: https://download.geofabrik.de/europe/slovakia-latest.osm.pbf
+      REPLICATION_URL: https://download.geofabrik.de/europe/slovakia-updates/
+      NOMINATIM_PASSWORD: nominatim
+      # Restrict results to Slovakia only
+      NOMINATIM_QUERY_LANGUAGE: sk,cs,en
+    volumes:
+      - nominatim-sk-data:/var/lib/postgresql/14/main
+    shm_size: "1gb"
+
+volumes:
+  nominatim-sk-data:
+

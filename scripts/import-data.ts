@@ -5,11 +5,9 @@ import * as path from "path";
 import bcrypt from "bcryptjs";
 
 async function loadPrisma() {
-  const { PrismaBetterSqlite3 } = await import("@prisma/adapter-better-sqlite3");
+  const { PrismaPg } = await import("@prisma/adapter-pg");
   const { PrismaClient } = await import("../src/generated/prisma/client.js");
-  const adapter = new PrismaBetterSqlite3({
-    url: process.env.DATABASE_URL || "file:dev.db",
-  });
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
   return new PrismaClient({ adapter });
 }
 
@@ -260,12 +258,18 @@ async function main() {
 
       let creationDate: Date | null = null;
       if (record.CreationDate) {
-        try { creationDate = new Date(record.CreationDate); } catch { /* ignore */ }
+        try {
+          const d = new Date(record.CreationDate);
+          if (!isNaN(d.getTime()) && d.getUTCFullYear() > 0) creationDate = d;
+        } catch { /* ignore */ }
       }
 
       let cancellationDate: Date | null = null;
       if (record.CancellationDate) {
-        try { cancellationDate = new Date(record.CancellationDate); } catch { /* ignore */ }
+        try {
+          const d = new Date(record.CancellationDate);
+          if (!isNaN(d.getTime()) && d.getUTCFullYear() > 0) cancellationDate = d;
+        } catch { /* ignore */ }
       }
 
       createData.push({

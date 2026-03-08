@@ -41,7 +41,9 @@ export default function MarkerClusterLayer({ markers }: Props) {
 
     const leafletMarkers = markers.map((m) => {
       const marker = L.marker([m.lat, m.lng], { icon: m.icon });
-      marker.bindPopup(m.popupContent);
+      marker.bindPopup(m.popupContent, { autoPan: false });
+      marker.on("mouseover", () => marker.openPopup());
+      marker.on("mouseout", () => marker.closePopup());
       marker.on("click", m.onClick);
       return marker;
     });
