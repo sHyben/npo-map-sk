@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ── Users & Auth ──────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  passwordHash   String
+  role           String    @default("user") // "user" | "org" | "admin"
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Organization claim
+  claimedOrg     Organization? @relation("ClaimedBy")
+
+  // Subscriptions & notifications
+  subscriptions  Subscription[]
+  notifications  Notification[]
+}
+
+// ── Organizations ─────────────────────────────────────────────
+
+model Organization {
+  id               String    @id @default(cuid())
+  ico              String    @unique
+  name             String
+  activity         String?
+  skNace           String?
+  address          String?
+  city             String?
+  zipCode          String?
+  legalFormCode    String?
+  legalFormName    String?
+  ownershipCode    String?
+  ownershipName    String?
+  sizeCategory     String?
+  sizeName         String?
+  creationDate     DateTime?
+  cancellationDate DateTime?
+  taxGift          Float?
+  latitude         Float?
+  longitude        Float?
+  description      String?
+
+  // Claim by user
+  claimedById      String?   @unique
+  claimedBy        User?     @relation("ClaimedBy", fields: [claimedById], references: [id])
+
+  // Branch addresses
+  branches         Branch[]
+
+  // Help requests
+  helpRequests     HelpRequest[]
+
+  // Subscriptions (followers)
+  subscriptions    Subscription[]
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([city])
+  @@index([activity])
+  @@index([legalFormCode])
+  @@index([latitude, longitude])
+}
+
+model Branch {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  street         String?
+  buildingNumber String?
+  registrationNumber String?
+  zipCode        String?
+  city           String?
+  municipalCode  String?
+  latitude       Float?
+  longitude      Float?
+
+  @@index([organizationId])
+}
+
+// ── Help Requests (Needs Layer) ───────────────────────────────
+
+model HelpRequest {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  helpType       String       // "people" | "technology" | "services" | "knowhow"
+  title          String
+  description    String
+  deadline       DateTime?
+  contactEmail   String?
+  contactPhone   String?
+  status         String       @default("active") // "active" | "fulfilled" | "expired"
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([helpType])
+  @@index([status])
+}
+
+// ── Subscriptions ─────────────────────────────────────────────
+
+model Subscription {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Subscribe to org OR topic (activity)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  topic          String?       // activity name for topic-based subscription
+  createdAt      DateTime      @default(now())
+
+  @@unique([userId, organizationId])
+  @@unique([userId, topic])
+  @@index([userId])
+  @@index([organizationId])
+  @@index([topic])
+}
+
+// ── Notifications ─────────────────────────────────────────────
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  message     String
+  link        String?
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
