@@ -13,17 +13,17 @@ export async function POST(
   }
 
   const userId = session.user.id!;
+  const userName = session.user.name || "";
+  const userEmail = session.user.email || "";
 
   // Check if org exists
   const org = await prisma.organization.findUnique({
     where: { id },
     select: { id: true, claimedById: true },
   });
-
   if (!org) {
     return NextResponse.json({ error: "Organizácia nenájdená" }, { status: 404 });
   }
-
   if (org.claimedById) {
     return NextResponse.json(
       { error: "Organizácia je už spravovaná iným používateľom" },
@@ -31,29 +31,42 @@ export async function POST(
     );
   }
 
-  // Check if user already claimed another org
-  const existingClaim = await prisma.organization.findFirst({
+  // Check for existing pending or approved claim by this user for this org
+  const existingApp = await prisma.claimApplication.findFirst({
+    where: {
+      organizationId: id,
+      userId,
+      status: { in: ["pending", "approved"] },
+    },
+  });
+  if (existingApp) {
+    return NextResponse.json(
+      { error: "Už ste požiadali o prevzatie tejto organizácie. Počkajte na schválenie." },
+      { status: 400 }
+    );
+  }
+
+  // Check if user already manages another org
+  const managesOther = await prisma.organization.findFirst({
     where: { claimedById: userId },
   });
-
-  if (existingClaim) {
+  if (managesOther) {
     return NextResponse.json(
       { error: "Už spravujete inú organizáciu" },
       { status: 400 }
     );
   }
 
-  // Claim the org and update user role
-  await prisma.$transaction([
-    prisma.organization.update({
-      where: { id },
-      data: { claimedById: userId },
-    }),
-    prisma.user.update({
-      where: { id: userId },
-      data: { role: "org" },
-    }),
-  ]);
+  // Create claim application
+  await prisma.claimApplication.create({
+    data: {
+      organizationId: id,
+      userId,
+      name: userName,
+      email: userEmail,
+      status: "pending",
+    },
+  });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, message: "Žiadosť o prevzatie bola odoslaná. Počkajte na schválenie administrátorom." });
 }

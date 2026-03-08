@@ -59,6 +59,8 @@ export default function OrganizationPage({ params }: { params: Promise<{ id: str
   const [subscribed, setSubscribed] = useState(false);
   const [showHelpForm, setShowHelpForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [claimError, setClaimError] = useState("");
 
   const isOwner = session?.user && (
     (session.user as { orgId: string | null }).orgId === id ||
@@ -90,14 +92,17 @@ export default function OrganizationPage({ params }: { params: Promise<{ id: str
   };
 
   const handleClaim = async () => {
+    setClaimLoading(true);
+    setClaimError("");
     const res = await fetch(`/api/organizations/${id}/claim`, {
       method: "POST",
     });
     const data = await res.json();
+    setClaimLoading(false);
     if (data.success) {
       window.location.reload();
     } else {
-      alert(data.error);
+      setClaimError(data.error || "Chyba pri preberaní profilu");
     }
   };
 
@@ -164,13 +169,17 @@ export default function OrganizationPage({ params }: { params: Promise<{ id: str
             {session?.user && !org.claimedById && (
               <button
                 onClick={handleClaim}
-                className="px-4 py-2 rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700"
+                className="px-4 py-2 rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                disabled={claimLoading}
               >
-                Prevziať profil
+                {claimLoading ? "Preberám..." : "Prevziať profil"}
               </button>
             )}
           </div>
         </div>
+        {claimError && (
+          <div className="mt-2 text-red-600 text-sm">{claimError}</div>
+        )}
 
         {org.description && (
           <p className="mt-4 text-gray-600">{org.description}</p>

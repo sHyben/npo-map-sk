@@ -143,3 +143,24 @@ model Notification {
   @@index([userId, read])
   @@index([userId, createdAt])
 }
+
+// ── Organization Claim Applications ──────────────────────────
+model ClaimApplication {
+  id          String      @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  email       String
+  status      String      @default("pending") // "pending" | "approved" | "rejected"
+  createdAt   DateTime    @default(now())
+  decidedAt   DateTime?
+  decidedById String?
+  decidedBy   User?       @relation("ClaimDecider", fields: [decidedById], references: [id])
+  reason      String?
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+}
